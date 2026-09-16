@@ -1,0 +1,88 @@
+using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.UIElements;
+using UnityEngine.SceneManagement;
+
+
+
+
+public class PlayerController : MonoBehaviour
+{
+
+    private float elapsedTime = 0f;
+    private float score = 0f;
+    public float scoreMultiplier = 10f;
+    public float thrustForce = 1f;
+    Rigidbody2D rb;
+    public UIDocument uiDocument;
+    private Label scoreText;
+    private Button restartButton;
+
+    public GameObject explosionEffect;
+    public GameObject boosterFlame;
+    private Vector3 flameOriginalScale;
+
+
+
+    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    void Start()
+    {
+        rb = GetComponent<Rigidbody2D>();
+        scoreText = uiDocument.rootVisualElement.Q<Label>("ScoreLabel");
+        restartButton = uiDocument.rootVisualElement.Q<Button>("RestartButton");
+        restartButton.style.display = DisplayStyle.None;
+        restartButton.clicked += ReloadScene;
+        flameOriginalScale = boosterFlame.transform.localScale;
+        boosterFlame.SetActive(false);
+
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        elapsedTime += Time.deltaTime;
+        score = Mathf.FloorToInt(elapsedTime * scoreMultiplier);
+        scoreText.text = "Score: " + score;
+
+        bool isThrusting = Mouse.current != null &&
+                  Mouse.current.leftButton.isPressed;
+
+        boosterFlame.SetActive(isThrusting);
+
+        if (isThrusting)
+        {
+            float flicker = 1f + Mathf.Sin(Time.time * 40f) * 0.2f;
+
+            boosterFlame.transform.localScale = new Vector3(
+                flameOriginalScale.x,
+                flameOriginalScale.y * flicker,
+                flameOriginalScale.z
+            );
+        }
+
+        if (isThrusting)
+        {
+            // Calculate mouse direction
+            Vector3 mousePos = Camera.main.ScreenToWorldPoint(Mouse.current.position.value);
+            Vector2 direction = (mousePos - transform.position).normalized;
+
+            // Move player in direction of mouse
+            transform.up = direction;
+            rb.AddForce(direction * thrustForce);
+
+        }
+
+    }
+
+    void OnCollisionEnter2D(Collision2D collision)
+    {
+        Destroy(gameObject);
+        Instantiate(explosionEffect, transform.position, transform.rotation);
+        restartButton.style.display = DisplayStyle.Flex;
+
+    }
+    void ReloadScene()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+}
